@@ -127,4 +127,107 @@ p.bindSettings=function(){originalBindSettings.call(this);const btn=this.querySe
 p.printCalculation=function(r){const w=window.open("","_blank","width=900,height=900");if(!w){this.toast("⚠️ Разрешите всплывающие окна для печати");return;}const row=(a,b)=>`<tr><td>${a}</td><td>${b}</td></tr>`;const html=`<!doctype html><html><head><meta charset="utf-8"><title>Расчёт 3D печати</title><style>@page{size:A4;margin:15mm}*{box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;color:#171717;font-size:11px;line-height:1.4;margin:0}.sheet{max-width:760px;margin:auto}.head{display:flex;justify-content:space-between;border-bottom:2px solid #222;padding-bottom:10px;margin-bottom:16px}.title{font-size:21px;font-weight:700}.sub{font-size:10px;color:#666}.total{text-align:right}.total .label{font-size:9px;color:#666;text-transform:uppercase}.total .value{font-size:23px;font-weight:700}.sec{margin:13px 0}.sec h2{font-size:12px;margin:0 0 6px;padding-bottom:4px;border-bottom:1px solid #ddd}.tbl{width:100%;border-collapse:collapse;font-size:10.5px}.tbl td{padding:4px;border-bottom:1px solid #eee}.tbl td:last-child{text-align:right;font-weight:600}.sum{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:10px}.box{border:1px solid #ddd;border-radius:6px;padding:7px}.box .label{font-size:8px;color:#666}.box .value{font-size:13px;font-weight:700}.foot{margin-top:16px;padding-top:7px;border-top:1px solid #ddd;font-size:8px;color:#777;text-align:center}</style></head><body><div class="sheet"><div class="head"><div><div class="title">3D Калькулятор</div><div class="sub">Расчёт стоимости заказа · ${new Date().toLocaleString("ru-RU")}</div></div><div class="total"><div class="label">Итого за заказ</div><div class="value">${this.money(r.salePrice)}</div></div></div><div class="sec"><h2>Заказ</h2><table class="tbl">${row("Материал",this.escape(r.material?.name||""))}${row("Принтер",this.escape(r.printer?.name||""))}${row("Количество",`${r.q} шт.`)}${row("Вес одного изделия",`${r.weight} г`)}${row("Вес с отходами",`${r.totalEffectiveWeight.toFixed(1)} г`)}${row("Время печати",`${Math.floor(r.totalHours)} ч ${Math.round((r.totalHours%1)*60)} мин`)}${row("Тип клиента",this.escape(r.customerType))}</table></div><div class="sec"><h2>Себестоимость</h2><table class="tbl">${row("Материал",this.money(r.materialCost))}${row("Печать",this.money(r.machineCost))}${row(`Упаковка · ${this.money(r.packagingRate)} ₽/шт. × ${r.packagingQty} шт.`,this.money(r.packagingCost))}${row(`Постобработка · ${this.money(r.postProcessingRate)} ₽/шт. × ${r.postProcessingQty} шт.`,this.money(r.postProcessingCost))}${row("Итого себестоимость",this.money(r.cost))}</table></div><div class="sum"><div class="box"><div class="label">ЦЕНА / ШТ.</div><div class="value">${this.money(r.salePricePerUnit)}</div></div><div class="box"><div class="label">ПРИБЫЛЬ</div><div class="value">${this.money(r.profit)}</div></div><div class="box"><div class="label">МАРЖА</div><div class="value">${r.margin.toFixed(1)}%</div></div></div><div class="sec"><h2>Коммерческие условия</h2><table class="tbl">${row("Базовая цена с наценкой",this.money(r.retailBasePrice))}${row(r.discountLabel||"Скидка",r.discount?`−${this.money(r.discountAmount)}`:"0 ₽")}${row("Срочность",r.urgentMarkup?`+${r.urgentMarkup}% · ${this.money(r.urgentCost)}`:"Нет")}${row("Минимальный заказ",this.money(r.minimumOrder))}${row("Округление",`до ${this.money(this.data.settings.rounding)}`)}</table></div><div class="foot">Расчёт сформирован в 3D Калькуляторе</div></div><script>window.onload=()=>setTimeout(()=>window.print(),200)</script></body></html>`;w.document.open();w.document.write(html);w.document.close();w.focus();};
 
 console.log("[3D Print Calculator] UI enhancements 1.6.4 loaded");
+
+const Calculator=customElements.get("three-d-print-calculator");
+if(!Calculator)throw new Error("3D calculator main component was not registered");
+const p=Calculator.prototype;
+const originalBaseStyle=p.baseStyle;
+const originalRenderSettings=p.renderSettings;
+
+p.baseStyle=function(){
+  const css=originalBaseStyle.call(this);
+  const extra=`
+.urgent-choice{
+  width:fit-content;
+  max-width:100%;
+  margin:12px auto 0;
+  padding:9px 15px;
+  border:1px solid var(--divider-color);
+  border-radius:12px;
+  background:var(--primary-background-color);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:10px;
+  box-sizing:border-box;
+  transition:border-color .18s ease,background .18s ease,box-shadow .18s ease;
+}
+.urgent-choice:hover{border-color:var(--secondary-text-color)}
+.urgent-choice:has(input:checked){
+  border-color:var(--primary-color);
+  background:color-mix(in srgb,var(--primary-color) 7%,var(--card-background-color,var(--primary-background-color)));
+  box-shadow:0 2px 10px rgba(0,0,0,.04);
+}
+.urgent-choice input{margin:0}
+.urgent-choice>b,.urgent-choice strong{font-weight:700}
+.settings-version{
+  grid-column:1/-1;
+  margin-top:18px;
+  display:flex;
+  justify-content:center;
+}
+.settings-version-button{
+  width:min(100%,420px);
+  min-height:54px;
+  padding:10px 16px;
+  border:1px solid var(--divider-color);
+  border-radius:13px;
+  background:var(--card-background-color,var(--primary-background-color));
+  color:var(--primary-text-color);
+  display:flex;
+  align-items:center;
+  gap:12px;
+  cursor:pointer;
+  text-align:left;
+  box-sizing:border-box;
+  transition:transform .15s ease,border-color .15s ease,box-shadow .15s ease,background .15s ease;
+}
+.settings-version-button:hover{
+  border-color:var(--secondary-text-color);
+  box-shadow:0 3px 12px rgba(0,0,0,.08);
+  transform:translateY(-1px);
+}
+.settings-version-button:active{transform:translateY(0)}
+.settings-version-icon{width:30px;height:30px;display:grid;place-items:center;flex:0 0 30px}
+.settings-version-icon svg{width:28px;height:28px;fill:currentColor}
+.settings-version-main{min-width:0;flex:1}
+.settings-version-title{font-size:13px;font-weight:700;line-height:1.2}
+.settings-version-sub{font-size:11px;color:var(--secondary-text-color);margin-top:3px}
+.settings-version-badge{
+  font-size:11px;
+  font-weight:700;
+  padding:4px 8px;
+  border-radius:999px;
+  background:var(--primary-background-color);
+  border:1px solid var(--divider-color);
+  white-space:nowrap;
+}
+`;
+  return css.replace("</style>",extra+"</style>");
+};
+
+p.renderSettings=function(){
+  const html=originalRenderSettings.call(this);
+  return html+`<div class="settings-version">
+    <button type="button" class="settings-version-button" id="open-github-project" title="Открыть проект на GitHub">
+      <span class="settings-version-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.11.79-.25.79-.56v-2.02c-3.2.7-3.87-1.35-3.87-1.35-.53-1.33-1.28-1.69-1.28-1.69-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.56-.29-5.26-1.28-5.26-5.7 0-1.26.45-2.29 1.19-3.1-.12-.29-.52-1.47.11-3.06 0 0 .97-.31 3.17 1.18A11 11 0 0 1 12 6.1c.98 0 1.96.13 2.88.39 2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.77.11 3.06.74.81 1.19 1.84 1.19 3.1 0 4.43-2.7 5.41-5.27 5.69.41.35.78 1.04.78 2.1v3.1c0 .31.21.67.8.56A11.51 11.51 0 0 0 23.5 12C23.5 5.65 18.35.5 12 .5Z"/></svg>
+      </span>
+      <span class="settings-version-main">
+        <span class="settings-version-title">3D Print Calculator</span>
+        <span class="settings-version-sub">Исходный код и обновления</span>
+      </span>
+      <span class="settings-version-badge">v1.6.5</span>
+    </button>
+  </div>`;
+};
+
+const originalBindSettings=p.bindSettings;
+p.bindSettings=function(){
+  originalBindSettings.call(this);
+  const btn=this.querySelector("#open-github-project");
+  if(btn)btn.onclick=()=>window.open("https://github.com/menfis911/hassio-3d-print-calculator","_blank","noopener,noreferrer");
+};
+
+console.log("[3D Print Calculator] UI polish 1.6.5 loaded");
 // === 3D CALCULATOR UI ENHANCEMENTS BUNDLE END ===
