@@ -1,0 +1,28 @@
+name: Release HACS version
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    if: ${{ !startsWith(github.event.head_commit.message, 'chore: release') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create v1.0.0 release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view v1.0.0 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release v1.0.0 already exists"
+          else
+            gh release create v1.0.0 \
+              --repo "$GITHUB_REPOSITORY" \
+              --target "$GITHUB_SHA" \
+              --title "v1.0.0" \
+              --notes-file CHANGELOG.md
+          fi
