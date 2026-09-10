@@ -1,5 +1,6 @@
 {
   "name": "3D Print Calculator",
+  "filename": "hassio-3d-print-calculator.js",
   "content_in_root": true,
   "render_readme": true
 }
