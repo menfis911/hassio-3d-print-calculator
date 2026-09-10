@@ -128,30 +128,93 @@ p.printCalculation=function(r){const w=window.open("","_blank","width=900,height
 
 console.log("[3D Print Calculator] UI enhancements 1.6.4 loaded");
 
-const polishRenderSettings= p.renderSettings;
-const polishBindSettings= p.bindSettings;
+const polishRenderSettings=p.renderSettings;
+const polishBindSettings=p.bindSettings;
+const polishRenderCalculator=p.renderCalculator;
+const polishBindCalculator=p.bindCalculator;
+const polishRenderPrinters=p.renderPrinters;
+const polishBindPrinters=p.bindPrinters;
+const polishCalculate=p.calculate;
+const polishBaseStyle=p.baseStyle;
+
+function ensureCalculatorEnhancements(){
+  const s=this.data.settings||(this.data.settings={});
+  if(!Number.isFinite(Number(s.electricityPrice))||Number(s.electricityPrice)<=0)s.electricityPrice=10.25;
+  if(!Array.isArray(this.data.presets))this.data.presets=[];
+}
+
+p.calculate=function(c=this.data.calculator){
+  ensureCalculatorEnhancements.call(this);
+  const printer=this.getPrinter(c?.printerId);
+  if(!printer)return polishCalculate.call(this,c);
+  const tariff=Math.max(0,Number(this.data.settings.electricityPrice)||10.25);
+  const consumption=Math.max(0,Number(printer.electricity)||0);
+  const oldElectricity=printer.electricity;
+  printer.electricity=consumption*tariff;
+  try{return polishCalculate.call(this,c);}finally{printer.electricity=oldElectricity;}
+};
+
+p.baseStyle=function(){
+  const base=polishBaseStyle.call(this);
+  const extra=`
+.urgent-choice{width:fit-content;max-width:100%;margin:12px auto 0;padding:9px 14px;border:1px solid var(--divider-color);border-radius:12px;background:var(--primary-background-color);display:flex;align-items:center;justify-content:center;gap:9px;box-sizing:border-box;transition:border-color .18s ease,background .18s ease,box-shadow .18s ease}.urgent-choice:hover{border-color:var(--secondary-text-color)}.urgent-choice:has(input:checked){border-color:var(--primary-color);background:color-mix(in srgb,var(--primary-color) 7%,var(--primary-background-color));box-shadow:0 2px 9px rgba(0,0,0,.05)}.urgent-choice input{margin:0;width:auto}.urgent-choice .muted{font-size:11px}.calculator-presets{grid-column:1/-1;padding:13px;border:1px solid var(--divider-color);border-radius:12px;background:var(--primary-background-color);margin-top:2px}.calculator-presets h3{margin:0 0 4px;font-size:14px}.calculator-presets .hint{font-size:11px;color:var(--secondary-text-color);margin-bottom:9px}.preset-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:8px}.preset-row select{min-width:0}.preset-row button{white-space:nowrap}.duplicate-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px}.settings-electricity{grid-column:1/-1;padding:14px;border:1px solid var(--divider-color);border-radius:12px;background:var(--primary-background-color);margin-top:14px}.settings-electricity h3{margin:0 0 5px;font-size:15px}.settings-electricity .hint{color:var(--secondary-text-color);font-size:11px;line-height:1.4;margin-bottom:10px}.settings-electricity .electricity-example{margin-top:9px;padding:9px;border-radius:9px;background:var(--card-background-color,var(--secondary-background-color));font-size:11px;line-height:1.45}.printer-formula{margin-top:20px}.printer-formula h3{margin:0 0 5px;font-size:16px}.printer-formula .formula-intro{font-size:11px;color:var(--secondary-text-color);line-height:1.45;margin-bottom:12px}.printer-formula-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px}.printer-formula-item{padding:13px;border:1px solid var(--divider-color);border-radius:12px;background:var(--primary-background-color)}.printer-formula-item h4{margin:0 0 9px;font-size:14px}.formula-line{display:flex;justify-content:space-between;gap:10px;padding:5px 0}.formula-line .meta{color:var(--secondary-text-color);font-size:11px}.formula-total{display:flex;justify-content:space-between;gap:10px;margin-top:6px;padding-top:8px;border-top:1px solid var(--divider-color);font-weight:800}.formula-example{margin-top:12px;padding:11px;border-radius:10px;background:var(--card-background-color,var(--secondary-background-color));font-size:11px;line-height:1.5}.settings-version{grid-column:1/-1;margin-top:30px;display:flex;justify-content:center;padding-bottom:8px}.settings-version-button{width:min(100%,420px);min-height:54px;padding:10px 16px;border:1px solid var(--divider-color);border-radius:13px;background:var(--card-background-color,var(--primary-background-color));color:var(--primary-text-color);display:flex;align-items:center;gap:12px;cursor:pointer;text-align:left;box-sizing:border-box;transition:transform .15s ease,border-color .15s ease,box-shadow .15s ease}.settings-version-button:hover{border-color:var(--secondary-text-color);box-shadow:0 3px 12px rgba(0,0,0,.08);transform:translateY(-1px)}.settings-version-button:active{transform:translateY(0)}@media(max-width:850px){.preset-row{grid-template-columns:1fr}.printer-formula-grid{grid-template-columns:1fr}}
+`;
+  return base.replace("</style>",extra+"</style>");
+};
+
+p.renderCalculator=function(r){
+  ensureCalculatorEnhancements.call(this);
+  let html=polishRenderCalculator.call(this,r);
+  const presets=this.data.presets;
+  const options=presets.length?presets.map(x=>`<option value="${this.escape(x.id)}">${this.escape(x.name)}</option>`).join(""):`<option value="">Нет сохранённых шаблонов</option>`;
+  const preset=`<div class="calculator-presets"><h3>⚡ Шаблоны расчёта</h3><div class="hint">Сохраняйте типовые настройки и применяйте их к новому расчёту.</div><div class="preset-row"><select id="preset-select"><option value="">Выберите шаблон</option>${options}</select><button type="button" id="load-preset">Применить</button><button type="button" id="save-preset">＋ Сохранить</button></div></div>`;
+  html=html.replace('<div class="actions copy-grid">',preset+'<div class="actions copy-grid">');
+  html=html.replace('<button class="primary" id="save-calc">💾 Сохранить</button>','<button class="primary" id="save-calc">💾 Сохранить</button><button class="duplicate-btn" id="duplicate-calc">📋 Дублировать</button>');
+  return html;
+};
+
+p.bindCalculator=function(){
+  polishBindCalculator.call(this);
+  ensureCalculatorEnhancements.call(this);
+  const duplicate=this.querySelector("#duplicate-calc");
+  if(duplicate)duplicate.onclick=()=>{this.data.calculator=this.clone(this.data.calculator);this.orderItems=[];this.activeTab="calculator";this.saveData();this.render();this.toast("✓ Новый расчёт создан из текущего");};
+  const select=this.querySelector("#preset-select"),load=this.querySelector("#load-preset"),save=this.querySelector("#save-preset");
+  if(load)load.onclick=()=>{const id=select?.value;if(!id)return;const preset=this.data.presets.find(x=>x.id===id);if(!preset)return;this.data.calculator=this.clone(preset.calculator);this.activeTab="calculator";this.saveData();this.render();this.toast(`✓ Шаблон «${preset.name}» применён`);};
+  if(save)save.onclick=()=>{const name=window.prompt("Название шаблона",`${this.getMaterial()?.name||"Расчёт"} / ${this.getPrinter()?.name||"Принтер"}`);if(!name||!name.trim())return;ensureCalculatorEnhancements.call(this);this.data.presets=[{id:this.id("preset"),name:name.trim(),createdAt:new Date().toISOString(),calculator:this.clone(this.data.calculator)},...this.data.presets].slice(0,50);this.saveData();this.render();this.toast("✓ Шаблон сохранён");};
+};
 
 p.renderSettings=function(){
-  const html=polishRenderSettings.call(this);
-  return html+`<div style="grid-column:1/-1;margin-top:18px;display:flex;justify-content:center">
-    <button type="button" id="open-github-project" title="Открыть проект на GitHub" style="width:min(100%,420px);min-height:54px;padding:10px 16px;border:1px solid var(--divider-color);border-radius:13px;background:var(--card-background-color,var(--primary-background-color));color:var(--primary-text-color);display:flex;align-items:center;gap:12px;cursor:pointer;text-align:left;box-sizing:border-box">
-      <span style="width:30px;height:30px;display:grid;place-items:center;flex:0 0 30px" aria-hidden="true">
-        <svg viewBox="0 0 24 24" style="width:28px;height:28px;fill:currentColor"><path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.11.79-.25.79-.56v-2.02c-3.2.7-3.87-1.35-3.87-1.35-.53-1.33-1.28-1.69-1.28-1.69-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.56-.29-5.26-1.28-5.26-5.7 0-1.26.45-2.29 1.19-3.1-.12-.29-.52-1.47.11-3.06 0 0 .97-.31 3.17 1.18A11 11 0 0 1 12 6.1c.98 0 1.96.13 2.88.39 2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.77.11 3.06.74.81.23 2.77.11 3.06.74.81 1.19 1.84 1.19 3.1 0 4.43-2.7 5.41-5.27 5.69.41.35.78 1.04.78 2.1v3.1c0 .31.21.67.8.56A11.51 11.51 0 0 0 23.5 12C23.5 5.65 18.35.5 12 .5Z"/></svg>
-      </span>
-      <span style="min-width:0;flex:1">
-        <span style="display:block;font-size:13px;font-weight:700;line-height:1.2">3D Print Calculator</span>
-        <span style="display:block;font-size:11px;color:var(--secondary-text-color);margin-top:3px">Исходный код и обновления</span>
-      </span>
-      <span style="font-size:11px;font-weight:700;padding:4px 8px;border-radius:999px;background:var(--primary-background-color);border:1px solid var(--divider-color);white-space:nowrap">v1.6.6</span>
-    </button>
-  </div>`;
+  ensureCalculatorEnhancements.call(this);
+  let html=polishRenderSettings.call(this);
+  html=html.replace(/<div class="settings-version">[\s\S]*?<\/button>\s*<\/div>\s*$/,"");
+  const tariff=Number(this.data.settings.electricityPrice)||10.25;
+  const example=(Number(this.data.printers[0]?.electricity)||0)*tariff+(Number(this.data.printers[0]?.depreciation)||0)+(Number(this.data.printers[0]?.consumables)||0);
+  return html+`<div class="settings-electricity"><h3>⚡ Электроэнергия</h3><div class="hint">Укажите стоимость 1 кВт·ч. Потребление принтера задаётся в кВт·ч за час работы.</div><div class="field"><label>Тариф, ₽ / кВт·ч</label><input id="electricity-price" type="number" min="0" step="0.01" value="${tariff}"></div><div class="electricity-example">Пример: ${this.escape(this.data.printers[0]?.name||"Принтер")} при ${Number(this.data.printers[0]?.electricity||0)} кВт·ч/ч × ${this.moneyExact(tariff)} = ${this.moneyExact(Number(this.data.printers[0]?.electricity||0)*tariff)} ₽/ч электроэнергии. С учётом амортизации и расходников: ${this.moneyExact(example)} ₽/ч.</div></div><div class="settings-version"><button type="button" class="settings-version-button" id="open-github-project" title="Открыть проект на GitHub"><span class="settings-version-icon" aria-hidden="true"><svg viewBox="0 0 24 24" style="width:28px;height:28px;fill:currentColor"><path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.11.79-.25.79-.56v-2.02c0-.31.21-.67.79-.56A11.51 11.51 0 0 0 23.5 12C23.5 5.65 18.35.5 12 .5Z"/></svg></span><span style="min-width:0;flex:1"><span style="display:block;font-size:13px;font-weight:700;line-height:1.2">3D Print Calculator</span><span style="display:block;font-size:11px;color:var(--secondary-text-color);margin-top:3px">Исходный код и обновления</span></span><span style="font-size:11px;font-weight:700;padding:4px 8px;border-radius:999px;background:var(--primary-background-color);border:1px solid var(--divider-color);white-space:nowrap">v1.7.0</span></button></div>`;
 };
 
 p.bindSettings=function(){
   polishBindSettings.call(this);
+  ensureCalculatorEnhancements.call(this);
+  const input=this.querySelector("#electricity-price");
+  if(input){const update=()=>{const v=Math.max(0,Number(input.value)||0);this.data.settings.electricityPrice=v;this.saveData();};input.addEventListener("change",update);input.addEventListener("input",update);}
   const btn=this.querySelector("#open-github-project");
   if(btn)btn.onclick=()=>window.open("https://github.com/menfis911/hassio-3d-print-calculator","_blank","noopener,noreferrer");
 };
 
-console.log("[3D Print Calculator] UI polish 1.6.6 loaded");
+p.renderPrinters=function(){
+  ensureCalculatorEnhancements.call(this);
+  const html=polishRenderPrinters.call(this);
+  const tariff=Math.max(0,Number(this.data.settings.electricityPrice)||10.25);
+  const cards=this.data.printers.map(pr=>{const kwh=Math.max(0,Number(pr.electricity)||0),dep=Math.max(0,Number(pr.depreciation)||0),cons=Math.max(0,Number(pr.consumables)||0),electricity=kwh*tariff,total=electricity+dep+cons;return `<div class="printer-formula-item"><h4>${this.escape(pr.name||"Принтер")}</h4><div class="formula-line"><span>Электроэнергия</span><span><b>${this.moneyExact(electricity)} / ч</b><br><span class="meta">${kwh} кВт·ч/ч × ${this.moneyExact(tariff)}</span></span></div><div class="formula-line"><span>Амортизация</span><span><b>${this.moneyExact(dep)} / ч</b></span></div><div class="formula-line"><span>Расходники</span><span><b>${this.moneyExact(cons)} / ч</b></span></div><div class="formula-total"><span>Итого работы принтера</span><span>${this.moneyExact(total)} / ч</span></div></div>`;}).join("");
+  const examplePrinter=this.data.printers[0];
+  const exKwh=Math.max(0,Number(examplePrinter?.electricity)||0),exDep=Math.max(0,Number(examplePrinter?.depreciation)||0),exCons=Math.max(0,Number(examplePrinter?.consumables)||0),exElec=exKwh*tariff,exTotal=exElec+exDep+exCons;
+  return html+`<div class="card printer-formula"><h3>🧮 Формула расчёта стоимости принтера</h3><div class="formula-intro">Себестоимость часа печати складывается из трёх пунктов: электроэнергия + амортизация + расходники.</div><div class="printer-formula-grid">${cards}</div>${examplePrinter?`<div class="formula-example"><b>Пример для ${this.escape(examplePrinter.name||"принтера")}:</b> ${exKwh} кВт·ч/ч × ${this.moneyExact(tariff)} = ${this.moneyExact(exElec)} ₽/ч электроэнергии; + ${this.moneyExact(exDep)} ₽ амортизации; + ${this.moneyExact(exCons)} ₽ расходников → <b>${this.moneyExact(exTotal)} ₽/ч</b> себестоимости часа печати.</div>`:""}</div>`;
+};
+
+p.bindPrinters=function(){
+  polishBindPrinters.call(this);
+  ensureCalculatorEnhancements.call(this);
+};
+
+console.log("[3D Print Calculator] UI polish 1.7.0 loaded");
 // === 3D CALCULATOR UI ENHANCEMENTS BUNDLE END ===
