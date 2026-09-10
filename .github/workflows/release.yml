@@ -10,9 +10,11 @@ permissions:
 
 jobs:
   release:
-    if: ${{ !startsWith(github.event.head_commit.message, 'chore: release') }}
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Create v1.0.0 release
         env:
           GH_TOKEN: ${{ github.token }}
