@@ -29,6 +29,8 @@ jobs:
           main_path = Path("hassio-3d-print-calculator.js")
           enhancement_path = Path("calculator-enhancements.js")
           polish_path = Path("calculator-ui-polish.js")
+          business_path = Path("calculator-business.js")
+          pdf_path = Path("calculator-pdf-business.js")
 
           start = "// === 3D CALCULATOR UI ENHANCEMENTS BUNDLE START ==="
           end = "// === 3D CALCULATOR UI ENHANCEMENTS BUNDLE END ==="
@@ -36,25 +38,18 @@ jobs:
           main = main_path.read_text(encoding="utf-8")
           enhancement = enhancement_path.read_text(encoding="utf-8").strip()
           polish = polish_path.read_text(encoding="utf-8").strip()
+          business = business_path.read_text(encoding="utf-8").strip()
+          pdf = pdf_path.read_text(encoding="utf-8").strip()
 
           if start in main:
               main = main.split(start, 1)[0].rstrip()
 
-          bundled = (
-              main.rstrip()
-              + "\n\n"
-              + start
-              + "\n"
-              + enhancement
-              + "\n\n"
-              + polish
-              + "\n"
-              + end
-              + "\n"
-          )
-
+          bundled = (main.rstrip()+"\n\n"+start+"\n"+enhancement+"\n\n"+polish+"\n\n"+business+"\n\n"+pdf+"\n"+end+"\n")
           main_path.write_text(bundled, encoding="utf-8")
           PY
+
+      - name: Validate generated JavaScript
+        run: node --check hassio-3d-print-calculator.js
 
       - name: Commit bundled frontend
         id: bundle_commit
@@ -66,23 +61,16 @@ jobs:
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git add hassio-3d-print-calculator.js
             git commit -m "build: bundle calculator frontend"
-
-            # The main branch may have changed after checkout (for example,
-            # another manual commit). Rebase the generated commit before push.
-            # Retry once if the remote moves again between fetch and push.
             for attempt in 1 2 3; do
               git fetch origin main
               git rebase origin/main && git push origin HEAD:main && break
-
               if [ "$attempt" -eq 3 ]; then
                 echo "Failed to push bundled frontend after 3 attempts"
                 exit 1
               fi
-
               git rebase --abort || true
               sleep 2
             done
-
             echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
 
@@ -96,13 +84,8 @@ jobs:
           VERSION: ${{ steps.version.outputs.version }}
         run: |
           TARGET_SHA=$(git rev-parse HEAD)
-
           if gh release view "v${VERSION}" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             echo "Release v${VERSION} already exists"
           else
-            gh release create "v${VERSION}" \
-              --repo "$GITHUB_REPOSITORY" \
-              --target "$TARGET_SHA" \
-              --title "v${VERSION}" \
-              --generate-notes
+            gh release create "v${VERSION}" --repo "$GITHUB_REPOSITORY" --target "$TARGET_SHA" --title "v${VERSION}" --generate-notes
           fi
