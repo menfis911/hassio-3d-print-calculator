@@ -1,4 +1,4 @@
-const pdfBusinessBind=p.bindCalculator;
+let pdfBusinessBind=p.bindCalculator;
 function buildBusinessPdfHtml(r,c,s,host){
   const name=(c.customerName||'Без клиента').trim();
   const date=new Date().toLocaleString('ru-RU');
