@@ -31,6 +31,7 @@ jobs:
           polish_path = Path("calculator-ui-polish.js")
           business_path = Path("calculator-business.js")
           pdf_path = Path("calculator-pdf-business.js")
+          new_calc_path = Path("calculator-new-calc.js")
 
           start = "// === 3D CALCULATOR UI ENHANCEMENTS BUNDLE START ==="
           end = "// === 3D CALCULATOR UI ENHANCEMENTS BUNDLE END ==="
@@ -40,11 +41,12 @@ jobs:
           polish = polish_path.read_text(encoding="utf-8").strip()
           business = business_path.read_text(encoding="utf-8").strip()
           pdf = pdf_path.read_text(encoding="utf-8").strip()
+          new_calc = new_calc_path.read_text(encoding="utf-8").strip()
 
           if start in main:
               main = main.split(start, 1)[0].rstrip()
 
-          bundled = (main.rstrip()+"\n\n"+start+"\n"+enhancement+"\n\n"+polish+"\n\n"+business+"\n\n"+pdf+"\n"+end+"\n")
+          bundled = (main.rstrip()+"\n\n"+start+"\n"+enhancement+"\n\n"+polish+"\n\n"+business+"\n\n"+pdf+"\n\n"+new_calc+"\n"+end+"\n")
           main_path.write_text(bundled, encoding="utf-8")
           PY
 
